@@ -16,7 +16,7 @@ jobs:
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
 
-  desktop-tests:
+  test-split:
     runs-on: ubuntu-20.04
     needs: prepare
     steps:
@@ -26,71 +26,32 @@ jobs:
       - name: Install dependencies 🔧
         run: npm ci
 
-      - name: Run Cypress tests on desktop 🖥️
+      - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
         with:
           spec: ${{ matrix.test }}
         env:
           CYPRESS_CACHE_FOLDER: ${{ runner.workspace }}/.cypress_cache
-      strategy:
-        matrix:
-          include:
-            - environment: desktop
-              test: A1
-            - environment: desktop
-              test: A2
-            - environment: desktop
-              test: A3
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - environment: desktop
+            test: A1
+          - environment: desktop
+            test: A2
+          - environment: desktop
+            test: A3
+          - environment: mobile
+            test: A1
+          - environment: mobile
+            test: A2
+          - environment: mobile
+            test: A3
 
-  mobile-tests:
-    runs-on: ubuntu-20.04
-    needs: prepare
-    steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
-
-      - name: Install dependencies 🔧
-        run: npm ci
-
-      - name: Run Cypress tests on mobile 📱
-        # https://github.com/cypress-io/github-action
-        uses: cypress-io/github-action@v5
-        with:
-          spec: ${{ matrix.test }}
-        env:
-          CYPRESS_CACHE_FOLDER: ${{ runner.workspace }}/.cypress_cache
-      strategy:
-        matrix:
-          include:
-            - environment: mobile
-              test: A1
-            - environment: mobile
-              test: A2
-            - environment: mobile
-              test: A3
-
-  prepare:
-    runs-on: ubuntu-20.04
-    outputs:
-      matrix: ${{ steps.generate-matrix.outputs.matrix }}
-    steps:
-      - name: Generate matrix 🔢
-        id: generate-matrix
-        run: |
-          CHUNKS=2
-          TESTS=(A1 A2 A3)
-          TOTAL_TESTS=${#TESTS[@]}
-          CHUNK_SIZE=$((TOTAL_TESTS / CHUNKS))
-          for ((i=0; i<$CHUNKS; i++)); do
-            START_INDEX=$((i * CHUNK_SIZE))
-            END_INDEX=$((START_INDEX + CHUNK_SIZE - 1))
-            if ((i == CHUNKS - 1)); then
-              END_INDEX=$((TOTAL_TESTS - 1))
-            fi
-            echo "::set-output name=matrix::$i=${TESTS[@]:$START_INDEX:$((END_INDEX - START_INDEX + 1))}"
   combine-results:
-    needs: [desktop-tests, mobile-tests]
+    needs: [test-split]
     if: always()
     runs-on: ubuntu-20.04
     steps:
