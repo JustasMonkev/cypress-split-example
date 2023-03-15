@@ -4,4 +4,5 @@
 
 it('runs test B1', () => {
   cy.wait(10_000)
+  console.log('test B1')
 })
