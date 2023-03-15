@@ -1,5 +1,7 @@
 name: ci
+
 on: push
+
 jobs:
   # example running all tests on a single machine
   test:
@@ -10,44 +12,59 @@ jobs:
         test: [A1, A2, A3]
     steps:
       - name: Checkout 🛎
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies 📦
+        run: npm install
 
       - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
 
+  # example running tests on multiple machines
   test-split:
+    needs: prepare
     runs-on: ubuntu-20.04
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
-      # generate the list using a bash script
-      - name: Create matrix ⊹
-        id: prepare
-        # for reusable workflow, must use the full action reference
-        uses: bahmutov/gh-build-matrix@main
+      # cache dependencies for reuse across chunks
+      - name: Cache Dependencies 🎁
+        uses: actions/cache@v2
         with:
-          n: 3 # number of containers to output
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: Print result 🖨
-        run: echo '${{ steps.prepare.outputs.matrix }}'
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
-    steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
+      - name: Install Dependencies 📦
+        run: npm ci
 
-      - name: Print GitHub variables 🖨
-        run: npx @bahmutov/print-env GITHUB
-
-      - name: Print GitHub strategy context 🖨
-        run: echo '${{ toJSON(strategy) }}'
-
-      - name: Run split Cypress tests 🧪
+      - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
         env:
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ strategy.job-index }}
-          DEBUG: cypress-split
+
+  # example to combine all splits into a single job
+  combine:
+    needs: prepare
+    runs-on: ubuntu-20.04
+    steps:
+      # cache dependencies for reuse across chunks
+      - name: Cache Dependencies 🎁
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Combine Results 🤝
+        run: |
+          echo "Combining test results"
+          # combine test results here
+
+    # set the "test" job as a required job to reduce manual job selection
+    needs: test
