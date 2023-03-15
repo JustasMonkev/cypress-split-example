@@ -16,11 +16,8 @@ jobs:
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
 
-  # example splitting all tests across GitHub machines
-  prepare:
+  test-split:
     runs-on: ubuntu-20.04
-    # explicitly set the output of this job
-    # so that other jobs can use it
     outputs:
       matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
@@ -34,10 +31,6 @@ jobs:
 
       - name: Print result 🖨
         run: echo '${{ steps.prepare.outputs.matrix }}'
-
-  test-split:
-    needs: prepare
-    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
