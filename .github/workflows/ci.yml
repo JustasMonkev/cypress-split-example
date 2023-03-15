@@ -4,12 +4,13 @@ jobs:
   # example running all tests on a single machine
   test:
     runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
     strategy:
       matrix:
         environment: [desktop, mobile]
+    steps:
+      - name: Checkout 🛎
+        uses: actions/checkout@v3
+
       - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
