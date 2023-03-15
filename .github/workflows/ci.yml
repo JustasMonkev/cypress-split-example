@@ -26,7 +26,6 @@ jobs:
         uses: cypress-io/github-action@v5
         with:
           browser: chrome
-          spec: cypress/integration/${{ matrix.environment }}/${{ matrix.test }}.spec.js
         env:
           SPLIT: ${{ steps.prepare.outputs.matrix }}
           SPLIT_INDEX: ${{ matrix.index }}
