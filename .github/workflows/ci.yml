@@ -1,5 +1,7 @@
 name: ci
+
 on: push
+
 jobs:
   # example running all tests on a single machine
   test:
@@ -10,56 +12,59 @@ jobs:
         test: [A1, A2, A3]
     steps:
       - name: Checkout 🛎
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
+
+      - name: Install Dependencies 📦
+        run: npm install
 
       - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
 
+  # example running tests on multiple machines
   test-split:
-    runs-on: ubuntu-20.04
     needs: prepare
+    runs-on: ubuntu-20.04
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
+      # cache dependencies for reuse across chunks
+      - name: Cache Dependencies 🎁
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
-      - name: Install dependencies 🔧
+      - name: Install Dependencies 📦
         run: npm ci
 
       - name: Run Cypress tests 🧪
         # https://github.com/cypress-io/github-action
         uses: cypress-io/github-action@v5
-        with:
-          spec: ${{ matrix.test }}
         env:
-          CYPRESS_CACHE_FOLDER: ${{ runner.workspace }}/.cypress_cache
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - environment: desktop
-            test: A1
-          - environment: desktop
-            test: A2
-          - environment: desktop
-            test: A3
-          - environment: mobile
-            test: A1
-          - environment: mobile
-            test: A2
-          - environment: mobile
-            test: A3
+          SPLIT: ${{ strategy.job-total }}
+          SPLIT_INDEX: ${{ strategy.job-index }}
 
-  combine-results:
-    needs: [test-split]
-    if: always()
+  # example to combine all splits into a single job
+  combine:
+    needs: prepare
     runs-on: ubuntu-20.04
     steps:
-      - name: Combine test results 🤝
-        uses: peter-evans/create-pull-request@v3.10.1
+      # cache dependencies for reuse across chunks
+      - name: Cache Dependencies 🎁
+        uses: actions/cache@v2
         with:
-          commit-message: 'Combine test results'
-          title: 'Combine test results'
-          body: 'This is an automatic PR to combine test results.'
-          branch: 'combine-results'
-          base: 'main'
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Combine Results 🤝
+        run: |
+          echo "Combining test results"
+          # combine test results here
+
+    # set the "test" job as a required job to reduce manual job selection
+    needs: test
