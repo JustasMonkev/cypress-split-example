@@ -1,45 +1,58 @@
-name: ci
-on: push
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
-  test:
-    runs-on: ubuntu-20.04
+  tests:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        environment: [desktop, mobile]
-        test: [A1, A2, A3]
-    steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
+        os: [ubuntu-latest]
+        cypress_chunk: [1, 2, 3] # specify number of chunks
 
-      - name: Install dependencies 🔍
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14.x'
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+            ${{ runner.os }}-
+            ${{ runner.os }}
+
+      - name: Install dependencies
         run: npm ci
 
-      - name: Split tests across multiple machines 🤖
-        id: prepare
+      - name: Build app
+        run: npm run build
+
+      - name: Split Cypress tests
         uses: bahmutov/gh-build-matrix@main
         with:
-          n: 3 # number of chunks to split into
-          items: ${{ matrix.environment }}:${{ matrix.test }}
+          n: ${{ matrix.cypress_chunk }}
 
-      - name: Run Cypress tests 🧪
-        # https://github.com/cypress-io/github-action
+      - name: Run Cypress tests
         uses: cypress-io/github-action@v5
-        with:
-          browser: chrome
-          spec: cypress/integration/${{ matrix.environment }}/${{ matrix.test }}.spec.js
         env:
-          SPLIT: ${{ steps.prepare.outputs.matrix }}
-          SPLIT_INDEX: ${{ matrix.index }}
+          # run each chunk in parallel
+          CYPRESS_PARALLEL_CHUNK: ${{ matrix.cypress_chunk }}
+          # ensure we are getting unique runs for each chunk
+          CYPRESS_RECORD_KEY: ${{ matrix.os }}-${{ matrix.cypress_chunk }}-${{ github.run_number }}
 
-  collect-results:
-    needs: test
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Combine test results 🤝
-        uses: peter-evans/create-pull-request-comment@v3.7.0
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
         with:
-          commit-message: Add test results
-          body: |
-            ## Test Results
-
-            ${{ join(needs.test.*.outputs.test-results, '\n') }}
+          name: Test Results
+          path: cypress/results/*.json
