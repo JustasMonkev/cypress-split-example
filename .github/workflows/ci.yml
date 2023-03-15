@@ -16,7 +16,7 @@ jobs:
 
       - name: Split tests across multiple machines 🤖
         id: prepare
-        uses: bahmutov/gh-build-matrix@v2
+        uses: bahmutov/gh-build-matrix@main
         with:
           n: 3 # number of chunks to split into
           items: ${{ matrix.environment }}:${{ matrix.test }}
