@@ -3,5 +3,4 @@
 /// <reference types="cypress" />
 
 it('runs test A1', () => {
-  cy.wait(10_000)
 })
