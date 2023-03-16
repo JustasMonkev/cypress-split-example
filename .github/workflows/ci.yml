@@ -18,8 +18,9 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
-      environment:
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+      matrix:
+        environment: [desktop, mobile]
+        device: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout 🛎
         uses: actions/checkout@v3
@@ -33,3 +34,5 @@ jobs:
           SPLIT: ${{ strategy.job-total }}
           SPLIT_INDEX: ${{ strategy.job-index }}
           DEBUG: cypress-split
+          ENVIRONMENT: ${{ matrix.environment }}
+          DEVICE: ${{ matrix.device }}
