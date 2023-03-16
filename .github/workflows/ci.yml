@@ -19,8 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       environment:
-        - desktop
-        - mobile
+      matrix: [mobile,desktop]
       matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout 🛎
