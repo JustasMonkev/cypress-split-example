@@ -1,44 +1,37 @@
 name: ci
 on: push
 jobs:
-  test:
+  prepare:
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        environment: [desktop, mobile]
-        test: [A1, A2, A3]
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
-      - name: Checkout 🛎
-        uses: actions/checkout@v3
-
-      - name: Install dependencies 🔍
-        run: npm ci
-
-      - name: Split tests across multiple machines 🤖
+      - name: Create matrix ⊹
         id: prepare
         uses: bahmutov/gh-build-matrix@main
         with:
-          n: 3 # number of chunks to split into
-          items: ${{ matrix.environment }}:${{ matrix.test }}
-
-      - name: Run Cypress tests 🧪
-        # https://github.com/cypress-io/github-action
-        uses: cypress-io/github-action@v5
-        with:
-          browser: chrome
-        env:
-          SPLIT: ${{ steps.prepare.outputs.matrix }}
-          SPLIT_INDEX: ${{ matrix.index }}
-
-  collect-results:
-    needs: test
+          n: 10
+      - name: Print result 🖨
+        run: echo '${{ steps.prepare.outputs.matrix }}'
+  test-split:
+    needs: prepare
     runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      environment:
+        - desktop
+        - mobile
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
     steps:
-      - name: Combine test results 🤝
-        uses: peter-evans/create-pull-request-comment@v3.7.0
-        with:
-          commit-message: Add test results
-          body: |
-            ## Test Results
-
-            ${{ join(needs.test.*.outputs.test-results, '\n') }}
+      - name: Checkout 🛎
+        uses: actions/checkout@v3
+      - name: Print GitHub variables 🖨
+        run: npx @bahmutov/print-env GITHUB
+      - name: Print GitHub strategy context 🖨
+        run: echo '${{ toJSON(strategy) }}'
+      - name: Run split Cypress tests 🧪
+        uses: cypress-io/github-action@v5
+        env:
+          SPLIT: ${{ strategy.job-total }}
+          SPLIT_INDEX: ${{ strategy.job-index }}
+          DEBUG: cypress-split
